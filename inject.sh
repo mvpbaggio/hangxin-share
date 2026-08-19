@@ -46,7 +46,7 @@ rm -rf "$APP_PATH/_CodeSignature"
 rm -f "$APP_PATH/embedded.mobileprovision"
 
 echo "==> 重新打包..."
-OUTPUT="XingxinWithShare.ipa"
+OUTPUT="HangxinWithShare.ipa"
 cd "$TMPDIR"
 zip -qr "$OLDPWD/$OUTPUT" Payload/
 

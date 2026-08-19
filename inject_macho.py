@@ -2,7 +2,7 @@
 """注入LC_LOAD_DYLIB到Mach-O二进制"""
 import struct, os, sys
 
-def inject(macho_path, dylib_name='@executable_path/XingxinShare.dylib'):
+def inject(macho_path, dylib_name='@executable_path/HangxinShare.dylib'):
     with open(macho_path, 'rb') as f:
         data = bytearray(f.read())
     
@@ -39,4 +39,4 @@ if __name__ == '__main__':
     if len(sys.argv) < 2:
         print(f'Usage: {sys.argv[0]} <macho_path> [dylib_name]')
         sys.exit(1)
-    inject(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else '@executable_path/XingxinShare.dylib')
+    inject(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else '@executable_path/HangxinShare.dylib')

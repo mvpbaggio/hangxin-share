@@ -143,9 +143,9 @@ def build_minimal_dylib(path):
         f.write(b'\x00')
     
     print(f"[!] 请在macOS上编译真正的dylib")
-    print(f"    命令: clang -target arm64-apple-ios -fobjc-arc -dynamiclib -o XingxinShare.dylib hook_dylib.m -lobjc")
+    print(f"    命令: clang -target arm64-apple-ios -fobjc-arc -dynamiclib -o HangxinShare.dylib hook_dylib.m -lobjc")
 
 if __name__ == '__main__':
     import sys
-    path = sys.argv[1] if len(sys.argv) > 1 else 'XingxinShare.dylib'
+    path = sys.argv[1] if len(sys.argv) > 1 else 'HangxinShare.dylib'
     build_minimal_dylib(path)

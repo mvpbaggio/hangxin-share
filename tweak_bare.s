@@ -1,5 +1,5 @@
 ; Arm64 bare-metal dylib
-; 编译: clang -target arm64-apple-ios -nostdlib -dynamiclib -o XingxinShare.dylib tweak_bare.s
+; 编译: clang -target arm64-apple-ios -nostdlib -dynamiclib -o HangxinShare.dylib tweak_bare.s
 
 .section __TEXT,__text
 .align 2
@@ -78,7 +78,7 @@ L_shareBtnTag:
 
 ; dylib信息
 .section __TEXT,__info_plist
-.asciz "XingxinShare"
+.asciz "HangxinShare"
 
 ; 符号表
 .subsections_via_symbols

@@ -5,7 +5,7 @@ import struct, os, sys
 def r(data, off, fmt='I'):
     return struct.unpack_from('<' + fmt, data, off)[0]
 
-def patch(macho_path, dylib_path='@executable_path/XingxinShare.dylib'):
+def patch(macho_path, dylib_path='@executable_path/HangxinShare.dylib'):
     with open(macho_path, 'rb') as f:
         data = bytearray(f.read())
     
@@ -89,4 +89,4 @@ if __name__ == '__main__':
     if len(sys.argv) < 2:
         print(f"Usage: {sys.argv[0]} <macho_path> [dylib_path]")
         sys.exit(1)
-    patch(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else '@executable_path/XingxinShare.dylib')
+    patch(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else '@executable_path/HangxinShare.dylib')

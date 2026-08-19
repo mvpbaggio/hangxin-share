@@ -16,13 +16,13 @@ jobs:
       run: |
         SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path 2>/dev/null)
         clang -target arm64-apple-ios14.0 -isysroot "$SDK_PATH" -fobjc-arc -dynamiclib \
-          -O2 -o XingxinShare.dylib hook_dylib.m \
+          -O2 -o HangxinShare.dylib hook_dylib.m \
           -framework UIKit -framework Foundation \
-          -Wl,-dylib_install_name,@executable_path/XingxinShare.dylib
-        echo "DYLIB_PATH=$(pwd)/XingxinShare.dylib" >> $GITHUB_ENV
+          -Wl,-dylib_install_name,@executable_path/HangxinShare.dylib
+        echo "DYLIB_PATH=$(pwd)/HangxinShare.dylib" >> $GITHUB_ENV
     
     - name: Upload dylib
       uses: actions/upload-artifact@v4
       with:
-        name: XingxinShare.dylib
-        path: XingxinShare.dylib
+        name: HangxinShare.dylib
+        path: HangxinShare.dylib

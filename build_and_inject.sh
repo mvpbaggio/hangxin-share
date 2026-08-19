@@ -26,9 +26,9 @@ DYLIB=$(find . -name "*.dylib" | head -1)
 if [ -z "$DYLIB" ]; then
     # 直接clang编译
     clang -target arm64-apple-ios14.0 -fobjc-arc -dynamiclib \
-        -O2 -o XingxinShare.dylib hook_dylib.m \
-        -lobjc -Wl,-dylib_install_name,@executable_path/XingxinShare.dylib
-    DYLIB=XingxinShare.dylib
+        -O2 -o HangxinShare.dylib hook_dylib.m \
+        -lobjc -Wl,-dylib_install_name,@executable_path/HangxinShare.dylib
+    DYLIB=HangxinShare.dylib
 fi
 echo "dylib: $DYLIB"
 
@@ -55,7 +55,7 @@ else
     INSERT_DYLIB=insert_dylib
 fi
 
-"$INSERT_DYLIB" --strip-codesig --all-yes "@executable_path/XingxinShare.dylib" "$MACHO" "${MACHO}_patched"
+"$INSERT_DYLIB" --strip-codesig --all-yes "@executable_path/HangxinShare.dylib" "$MACHO" "${MACHO}_patched"
 mv "${MACHO}_patched" "$MACHO"
 chmod +x "$MACHO"
 

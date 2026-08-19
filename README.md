@@ -30,12 +30,12 @@ THEOS=/opt/theos ./build.sh
 
 1. 把脱壳的 IPA 放到 `ipa/` 目录并推送到仓库
 2. 在 GitHub Actions 手动触发 `Build Injected IPA`
-3. 下载产出的 `XingxinWithShare.ipa`
+3. 下载产出的 `HangxinWithShare.ipa`
 4. 用 TrollStore 安装
 
 ## 安装
 
-用 TrollStore 打开 `XingxinWithShare.ipa` 安装即可。
+用 TrollStore 打开 `HangxinWithShare.ipa` 安装即可。
 
 ## 使用
 

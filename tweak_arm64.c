@@ -27,7 +27,7 @@ typedef id (*msgSendFunc)(id, void*, ...);
 __attribute__((constructor))
 static void init() {
     // 啥也不做，只验证dylib能被加载
-    const char *msg = "XingxinShare dylib loaded\n";
+    const char *msg = "HangxinShare dylib loaded\n";
     // 用write直接输出到syslog
     __asm__ volatile(
         "mov    x0, #1\n"         // stdout
@@ -36,7 +36,7 @@ static void init() {
         "mov    x16, #4\n"       // SYS_write
         "svc    #0x80\n"
         "b      Lend\n"
-        "Lmsg: .asciz \"XingxinShare dylib loaded\\n\"\n"
+        "Lmsg: .asciz \"HangxinShare dylib loaded\\n\"\n"
         "Lend:\n"
     );
 }
