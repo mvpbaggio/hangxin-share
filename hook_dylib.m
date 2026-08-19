@@ -5,6 +5,11 @@
 
 #pragma mark - 文件分享
 
+// 前向声明 (避免未定义函数错误)
+static void xingxin_AddCheckinButton(UIViewController *vc);
+static UIViewController *xingxin_TopVC(void);
+static void xingxin_checkinTapped(id self, SEL _cmd, id sender);
+
 static NSString *xingxin_FindFilePath(id vc) {
     NSArray *props = @[@"filePath", @"fileUrl", @"fileURL", @"documentURL",
                        @"localFilePath", @"downloadPath", @"dataPath",
