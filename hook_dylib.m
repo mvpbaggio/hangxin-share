@@ -94,7 +94,7 @@ static UIViewController *xingxin_TopVC(void) {
 static void xingxin_checkinTapped(id self, SEL _cmd, id sender) {
     UIApplication *app = UIApplication.sharedApplication;
 
-    // 1) wxwork 深链: 跳工作台/旧应用 (打卡入口通常在工作台)
+    // 1) wxwork 深链: 跳工作台
     NSArray *deepLinks = @[@"wxworklocalnew://gotooldapp", @"wxwork://"];
     for (NSString *urlStr in deepLinks) {
         NSURL *u = [NSURL URLWithString:urlStr];
@@ -105,7 +105,7 @@ static void xingxin_checkinTapped(id self, SEL _cmd, id sender) {
         }
     }
 
-    // 2) 原生打卡 VC (行信自研 WWKAttendanceCheckViewController)
+    // 2) 原生打卡 VC
     UIViewController *top = xingxin_TopVC();
     Class checkinClass = NSClassFromString(@"WWKAttendanceCheckViewController");
     if (checkinClass && top) {
@@ -121,23 +121,19 @@ static void xingxin_checkinTapped(id self, SEL _cmd, id sender) {
         }
     }
 
-    // 3) 官方打卡 web 兜底
+    // 3) web 兜底
     [app openURL:[NSURL URLWithString:@"https://open.work.weixin.qq.com/wwopen/attendance/"]
          options:@{} completionHandler:nil];
     NSLog(@"[行信] checkin web fallback");
 }
 
-// 在文件预览页导航栏加打卡按钮 (tag 928)
+// 在文件预览页导航栏加打卡按钮 (tag 928, 纯文字避免系统图标兼容问题)
 static void xingxin_AddCheckinButton(UIViewController *vc) {
     if (!vc.navigationItem) return;
     for (UIBarButtonItem *item in vc.navigationItem.rightBarButtonItems)
         if (item.tag == 928) return;
-    UIImage *img = [UIImage systemImageNamed:@"checkmark.circle"];
-    UIBarButtonItem *btn = img ?
-        [[UIBarButtonItem alloc] initWithImage:img style:UIBarButtonItemStylePlain
-                                        target:nil action:@selector(xingxin_checkinTapped:)] :
-        [[UIBarButtonItem alloc] initWithTitle:@"打卡" style:UIBarButtonItemStylePlain
-                                        target:nil action:@selector(xingxin_checkinTapped:)];
+    UIBarButtonItem *btn = [[UIBarButtonItem alloc] initWithTitle:@"打卡"
+        style:UIBarButtonItemStylePlain target:nil action:@selector(xingxin_checkinTapped:)];
     btn.tag = 928;
     NSMutableArray *items = [NSMutableArray arrayWithArray:vc.navigationItem.rightBarButtonItems];
     [items insertObject:btn atIndex:0];
