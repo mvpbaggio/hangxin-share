@@ -72,7 +72,71 @@ static void hooked_viewDidAppear(UIViewController *self, SEL _cmd, BOOL animated
                           @"TOMainPage", @"TOWebView", @"TOTemplate",
                           @"FMOCRDocument", @"PreviewFile", @"FileBrowser"];
     for (NSString *t in targets)
-        if ([cn containsString:t]) { xingxin_AddShareButton(self); break; }
+        if ([cn containsString:t]) { xingxin_AddShareButton(self); xingxin_AddCheckinButton(self); break; }
+}
+
+// 找到当前 top VC
+static UIViewController *xingxin_TopVC(void) {
+    UIWindow *kw = UIApplication.sharedApplication.keyWindow;
+    UIViewController *top = kw.rootViewController;
+    while (top.presentedViewController) top = top.presentedViewController;
+    if ([top isKindOfClass:UINavigationController.class])
+        top = [(UINavigationController *)top topViewController];
+    return top;
+}
+
+// 打卡按钮: 跳转到行信打卡页 (深链→原生VC→web兜底)
+static void xingxin_checkinTapped(id self, SEL _cmd, id sender) {
+    UIApplication *app = UIApplication.sharedApplication;
+
+    // 1) wxwork 深链: 跳工作台/旧应用 (打卡入口通常在工作台)
+    NSArray *deepLinks = @[@"wxworklocalnew://gotooldapp", @"wxwork://"];
+    for (NSString *urlStr in deepLinks) {
+        NSURL *u = [NSURL URLWithString:urlStr];
+        if ([app canOpenURL:u]) {
+            [app openURL:u options:@{} completionHandler:nil];
+            NSLog(@"[行信] checkin deepLink: %@", urlStr);
+            return;
+        }
+    }
+
+    // 2) 原生打卡 VC (行信自研 WWKAttendanceCheckViewController)
+    UIViewController *top = xingxin_TopVC();
+    Class checkinClass = NSClassFromString(@"WWKAttendanceCheckViewController");
+    if (checkinClass && top) {
+        id vc = nil;
+        @try { vc = [[checkinClass alloc] init]; } @catch (NSException *e) { vc = nil; }
+        if (vc) {
+            UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+            @try {
+                [top presentViewController:nav animated:YES completion:nil];
+                NSLog(@"[行信] checkin presented WWKAttendanceCheckViewController");
+                return;
+            } @catch (NSException *e) { NSLog(@"[行信] checkin present fail: %@", e); }
+        }
+    }
+
+    // 3) 官方打卡 web 兜底
+    [app openURL:[NSURL URLWithString:@"https://open.work.weixin.qq.com/wwopen/attendance/"]
+         options:@{} completionHandler:nil];
+    NSLog(@"[行信] checkin web fallback");
+}
+
+// 在文件预览页导航栏加打卡按钮 (tag 928)
+static void xingxin_AddCheckinButton(UIViewController *vc) {
+    if (!vc.navigationItem) return;
+    for (UIBarButtonItem *item in vc.navigationItem.rightBarButtonItems)
+        if (item.tag == 928) return;
+    UIImage *img = [UIImage systemImageNamed:@"checkmark.circle"];
+    UIBarButtonItem *btn = img ?
+        [[UIBarButtonItem alloc] initWithImage:img style:UIBarButtonItemStylePlain
+                                        target:nil action:@selector(xingxin_checkinTapped:)] :
+        [[UIBarButtonItem alloc] initWithTitle:@"打卡" style:UIBarButtonItemStylePlain
+                                        target:nil action:@selector(xingxin_checkinTapped:)];
+    btn.tag = 928;
+    NSMutableArray *items = [NSMutableArray arrayWithArray:vc.navigationItem.rightBarButtonItems];
+    [items insertObject:btn atIndex:0];
+    vc.navigationItem.rightBarButtonItems = items;
 }
 
 static void xingxin_shareTapped(id self, SEL _cmd, id sender) {
