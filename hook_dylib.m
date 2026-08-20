@@ -238,34 +238,6 @@ __attribute__((constructor))
 static void load() {
     class_addMethod(UIViewController.class, @selector(xingxin_shareTapped:),
                     (IMP)xingxin_shareTapped, "v@:@");
-    Method m0 = class_getInstanceMethod(UIViewController.class, @selector(viewDidAppear:));
-    if (m0) {
-        orig_viewDidAppear = (void (*)(id, SEL, BOOL))method_getImplementation(m0);
-        method_setImplementation(m0, (IMP)hooked_viewDidAppear);
-    }
-    
-    NSArray *textClasses = @[
-        @"WKTextView", @"WKWebView", @"WKTextField",
-        @"WWKTextView", @"WWKWebView", @"WWKTextField",
-        @"MMTextView", @"MMWebView",
-        @"WKContentView", @"WKTextInteraction",
-    ];
-    for (NSString *cn in textClasses) {
-        Class cls = objc_getClass(cn.UTF8String);
-        if (cls) xingxin_HookTextClass(cls);
-    }
-    xingxin_HookTextClass(UITextView.class);
-    xingxin_HookTextClass(UITextField.class);
-    xingxin_HookTextClass(UIResponder.class);
-    xingxin_HookTextClass(UIWebView.class);
-    
-    NSLog(@"[行信] Tweak loaded (分享+复制解除)");
-}
-
-__attribute__((constructor))
-static void load() {
-    class_addMethod(UIViewController.class, @selector(xingxin_shareTapped:),
-                    (IMP)xingxin_shareTapped, "v@:@");
     class_addMethod(UIViewController.class, @selector(xingxin_checkinTapped:),
                     (IMP)xingxin_checkinTapped, "v@:@");
     Method m0 = class_getInstanceMethod(UIViewController.class, @selector(viewDidAppear:));
