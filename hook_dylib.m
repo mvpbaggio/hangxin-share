@@ -110,7 +110,16 @@ static void xingxin_checkinTapped(id self, SEL _cmd, id sender) {
     Class checkinClass = NSClassFromString(@"WWKAttendanceCheckViewController");
     if (checkinClass && top) {
         id vc = nil;
-        @try { vc = [[checkinClass alloc] init]; } @catch (NSException *e) { vc = nil; }
+        // 正确入口: initWithCheckType:andFromType: (逆向自脱壳二进制, 参数 0,0=默认打卡)
+        // ⚠️ 之前用 [[alloc] init] 会闪退: 该类方法表里没有 init, 返回未初始化的 VC
+        SEL initSel = NSSelectorFromString(@"initWithCheckType:andFromType:");
+        if (initSel && [checkinClass instancesRespondToSelector:initSel]) {
+            IMP initImp = [checkinClass instanceMethodForSelector:initSel];
+            @try {
+                id raw = [checkinClass alloc];
+                vc = ((id (*)(id, SEL, int, long long))initImp)(raw, initSel, 0, 0);
+            } @catch (NSException *e) { vc = nil; }
+        }
         if (vc) {
             UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
             @try {
