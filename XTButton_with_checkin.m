@@ -222,15 +222,40 @@
 @end
 
 // ---------- 注入启动入口 ----------
-// dylib 注入后由构造函数自动拉起悬浮球 (v20c 原版同款启动方式)
+// 还原 v20c 原版启动逻辑：环境判断 → 创建 PBCapture（剪贴板历史）→ 创建 XTButton（悬浮球）
+static PBCapture *g_pbCapture = nil;
+static XTButton *g_xtButton = nil;
+
 __attribute__((constructor))
 static void XTButtonInit(void) {
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+    // 环境判断（同 v20c 原版）：仅行信/企微 BOC 版生效
+    NSString *bid = [[NSBundle mainBundle] bundleIdentifier];
+    if (bid.length &&
+        ![bid containsString:@"BOCWECHAT"] &&
+        ![bid containsString:@"wework"] &&
+        ![bid containsString:@"AFC"]) {
+        NSLog(@"[COYG] skip, bid=%@", bid);
+        return;
+    }
+
+    // 创建剪贴板历史（PBCapture），全局保活 —— v20c 原功能
+    g_pbCapture = [[PBCapture alloc] init];
+
+    // 等 window 就绪后创建悬浮球（带一次重试）
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (g_xtButton) return;
         UIWindow *window = [UIApplication sharedApplication].keyWindow;
-        if (!window) return;
-        XTButton *btn = [[XTButton alloc] init];
-        // init 内部已把 _btn/_checkinBtn addSubview 到 window, 这里强引用保活
-        objc_setAssociatedObject(window, @"XTButtonInstance", btn, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        if (!window) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                if (g_xtButton) return;
+                UIWindow *w2 = [UIApplication sharedApplication].keyWindow;
+                if (!w2) return;
+                g_xtButton = [[XTButton alloc] init];
+                NSLog(@"[COYG] XTButton injected (retry)");
+            });
+            return;
+        }
+        g_xtButton = [[XTButton alloc] init];
         NSLog(@"[COYG] XTButton injected");
     });
 }
