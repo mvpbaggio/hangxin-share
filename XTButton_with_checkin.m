@@ -110,7 +110,7 @@
     center.y += translation.y;
     self.center = center;
     _checkinBtn.center = CGPointMake(center.x - 46, center.y);
-    [gesture setTranslation:CGPointZero inView:self.superview];
+    [gesture setTranslation:CGPointMake(0, 0) inView:self.superview];
 }
 
 // 点击悬浮球 → 导出文件（原功能不变）

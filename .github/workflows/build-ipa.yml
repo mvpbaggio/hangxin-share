@@ -17,7 +17,7 @@ jobs:
         SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path 2>/dev/null)
         clang -target arm64-apple-ios14.0 -isysroot "$SDK_PATH" -fobjc-arc -dynamiclib \
           -O2 -o HangxinShare.dylib XTButton_with_checkin.m \
-          -framework UIKit -framework Foundation \
+          -framework UIKit -framework Foundation -framework CoreGraphics \
           -Wl,-dylib_install_name,@executable_path/HangxinShare.dylib
         echo "DYLIB_PATH=$(pwd)/HangxinShare.dylib" >> $GITHUB_ENV
     
