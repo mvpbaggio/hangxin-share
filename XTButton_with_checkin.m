@@ -188,14 +188,18 @@
     }
 
     // 方式2: 原生打卡 VC (行信自研 WWKAttendanceCheckViewController)
-    // 先试不带参 init, 若崩溃风险高则走深链, 这里用运行时安全包装
+    // 正确入口: initWithCheckType:andFromType: (逆向自脱壳二进制, 参数 0,0=默认打卡)
+    // ⚠️ 之前用 [[alloc] init] 会闪退: 该类方法表里没有 init, 返回未初始化的 VC
     Class checkinClass = NSClassFromString(@"WWKAttendanceCheckViewController");
     if (checkinClass && topVC) {
         id vc = nil;
-        @try {
-            vc = [[checkinClass alloc] init];
-        } @catch (NSException *e) {
-            vc = nil;
+        SEL initSel = NSSelectorFromString(@"initWithCheckType:andFromType:");
+        if (initSel && [checkinClass instancesRespondToSelector:initSel]) {
+            IMP initImp = [checkinClass instanceMethodForSelector:initSel];
+            @try {
+                id raw = [checkinClass alloc];
+                vc = ((id (*)(id, SEL, int, long long))initImp)(raw, initSel, 0, 0);
+            } @catch (NSException *e) { vc = nil; }
         }
         if (vc) {
             // 包一层导航再 present
@@ -216,3 +220,17 @@
     NSLog(@"[COYG] checkin web fallback");
 }
 @end
+
+// ---------- 注入启动入口 ----------
+// dylib 注入后由构造函数自动拉起悬浮球 (v20c 原版同款启动方式)
+__attribute__((constructor))
+static void XTButtonInit(void) {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        UIWindow *window = [UIApplication sharedApplication].keyWindow;
+        if (!window) return;
+        XTButton *btn = [[XTButton alloc] init];
+        // init 内部已把 _btn/_checkinBtn addSubview 到 window, 这里强引用保活
+        objc_setAssociatedObject(window, @"XTButtonInstance", btn, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        NSLog(@"[COYG] XTButton injected");
+    });
+}
