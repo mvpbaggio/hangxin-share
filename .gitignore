@@ -1,3 +1,4 @@
 *.ipa
 *.zip
 dylib_out/
+fix2_out/
