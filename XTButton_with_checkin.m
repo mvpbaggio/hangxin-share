@@ -54,6 +54,7 @@
 @implementation XTButton {
     UIButton *_btn;       // 悬浮球本体
     UIButton *_checkinBtn; // 打卡按钮
+    WKWebView *_webView;   // 打卡内嵌网页
 }
 
 - (instancetype)init {
@@ -159,41 +160,53 @@
 
 // ---- 打卡按钮点击 ----
 // 打卡位置(超哥指定): 粤.统一门户 → 考勤与请休假
-// 直接在行信内部浏览器打开, 利用行信进程内的 session/cookie 认证
+// ⚠️ 不能 openURL(会跳系统Safari,无认证态→失效),必须行信进程内 WKWebView 打开
+// WKWebView 在行信进程内, 共享 cookie 会话 → 等同工作台图标点击
 - (void)checkinTapped {
     NSString *urlStr = @"https://gd.brcloud.bankofchina.com/gdhx/uweb/ext/html/MB_UWeb/index.html";
-    NSURL *url = [NSURL URLWithString:urlStr];
     
-    // 用行信内部的 WebViewController 打开 (利用进程中已有的 session)
-    // 优先用 UIApplication openURL (行信会拦截 http/https 用自己的浏览器打开)
-    UIApplication *app = [UIApplication sharedApplication];
-    if ([app canOpenURL:url]) {
-        [app openURL:url options:@{} completionHandler:nil];
-        NSLog(@"[COYG] checkin -> %@", urlStr);
-    } else {
-        // 兜底: 用 WKWebView 内嵌打开
-        UIViewController *top = [UIApplication sharedApplication].keyWindow.rootViewController;
-        while (top.presentedViewController) top = top.presentedViewController;
-        
-        WKWebView *webView = [[WKWebView alloc] initWithFrame:[UIScreen mainScreen].bounds];
-        webView.backgroundColor = [UIColor whiteColor];
-        [webView loadRequest:[NSURLRequest requestWithURL:url]];
-        
-        UIViewController *webVC = [[UIViewController alloc] init];
-        webVC.view = webView;
-        
-        // 加关闭按钮
-        UIButton *closeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-        closeBtn.frame = CGRectMake(10, 40, 60, 30);
-        [closeBtn setTitle:@"关闭" forState:UIControlStateNormal];
-        closeBtn.backgroundColor = [UIColor whiteColor];
-        closeBtn.layer.cornerRadius = 5;
-        [closeBtn addTarget:self action:@selector(dismissWebView) forControlEvents:UIControlEventTouchUpInside];
-        [webView addSubview:closeBtn];
-        
-        [top presentViewController:webVC animated:YES completion:nil];
-        NSLog(@"[COYG] checkin -> WKWebView fallback");
-    }
+    UIViewController *top = [UIApplication sharedApplication].keyWindow.rootViewController;
+    while (top.presentedViewController) top = top.presentedViewController;
+    
+    // 行信进程内 WKWebView (带 cookie 会话)
+    WKWebView *webView = [[WKWebView alloc] initWithFrame:[UIScreen mainScreen].bounds];
+    webView.backgroundColor = [UIColor whiteColor];
+    
+    // 顶部工具条: 关闭 + 刷新
+    UIView *bar = [[UIView alloc] initWithFrame:CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.width, 64)];
+    bar.backgroundColor = [UIColor whiteColor];
+    bar.layer.shadowOpacity = 0.2;
+    bar.layer.shadowRadius = 2;
+    
+    UIButton *closeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    closeBtn.frame = CGRectMake(10, 24, 60, 32);
+    [closeBtn setTitle:@"✕ 关闭" forState:UIControlStateNormal];
+    [closeBtn setTitleColor:[UIColor darkGrayColor] forState:UIControlStateNormal];
+    [closeBtn addTarget:self action:@selector(dismissWebView) forControlEvents:UIControlEventTouchUpInside];
+    [bar addSubview:closeBtn];
+    
+    UIButton *refreshBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    refreshBtn.frame = CGRectMake([UIScreen mainScreen].bounds.size.width - 70, 24, 60, 32);
+    [refreshBtn setTitle:@"↻ 刷新" forState:UIControlStateNormal];
+    [refreshBtn setTitleColor:[UIColor darkGrayColor] forState:UIControlStateNormal];
+    [refreshBtn addTarget:self action:@selector(refreshWebView) forControlEvents:UIControlEventTouchUpInside];
+    [bar addSubview:refreshBtn];
+    
+    // webView 放在工具条下方
+    CGRect frame = [UIScreen mainScreen].bounds;
+    frame.origin.y = 64;
+    frame.size.height -= 64;
+    webView.frame = frame;
+    
+    UIViewController *webVC = [[UIViewController alloc] init];
+    webVC.view = [[UIView alloc] initWithFrame:[UIScreen mainScreen].bounds];
+    [webVC.view addSubview:bar];
+    [webVC.view addSubview:webView];
+    self->_webView = webView;
+    
+    [top presentViewController:webVC animated:YES completion:nil];
+    [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:urlStr]]];
+    NSLog(@"[COYG] checkin -> WKWebView: %@", urlStr);
 }
 
 // 关闭内嵌 WKWebView
@@ -201,6 +214,12 @@
     UIViewController *top = [UIApplication sharedApplication].keyWindow.rootViewController;
     while (top.presentedViewController) top = top.presentedViewController;
     [top dismissViewControllerAnimated:YES completion:nil];
+}
+
+// 刷新内嵌 WKWebView
+- (void)refreshWebView {
+    [self->_webView reload];
+}
 @end
 
 // ---------- 注入启动入口 ----------
