@@ -12,7 +12,7 @@
 #import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
-#import <WebKit/WebKit.h>
+// 不链接 WebKit.framework: 用 NSClassFromString 运行时动态取类, 避免 dyld 加载时解析 WebKit 符号失败导致整个 dylib 不加载
 
 // ---------- PBCapture (剪贴板历史) ----------
 @interface PBCapture : NSObject
@@ -181,8 +181,18 @@ static const void *kCheckinWebKey = &kCheckinWebKey;
     UIViewController *topVC = [UIApplication sharedApplication].keyWindow.rootViewController;
     while (topVC.presentedViewController) topVC = topVC.presentedViewController;
 
-    WKWebView *web = [[WKWebView alloc] initWithFrame:topVC.view.bounds];
-    web.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    // 运行时动态取 WKWebView 类 — 主程序没加载 WebKit 就跳过打卡, 绝不影响悬浮球
+    Class wkClass = NSClassFromString(@"WKWebView");
+    if (!wkClass) {
+        UIAlertController *alert = [UIAlertController
+            alertControllerWithTitle:@"提示"
+            message:@"当前环境不支持网页打卡" preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:nil]];
+        [topVC presentViewController:alert animated:YES completion:nil];
+        return;
+    }
+    id web = [[wkClass alloc] initWithFrame:topVC.view.bounds];
+    [web setAutoresizingMask:(UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight)];
 
     UIViewController *vc = [[UIViewController alloc] init];
     vc.view = [[UIView alloc] initWithFrame:topVC.view.bounds];
@@ -220,7 +230,7 @@ static const void *kCheckinWebKey = &kCheckinWebKey;
 - (void)checkinRefresh:(UIBarButtonItem *)sender {
     UIViewController *topVC = [UIApplication sharedApplication].keyWindow.rootViewController;
     while (topVC.presentedViewController) topVC = topVC.presentedViewController;
-    WKWebView *web = objc_getAssociatedObject(topVC, kCheckinWebKey);
+    id web = objc_getAssociatedObject(topVC, kCheckinWebKey);
     if (web) [web reload];
 }
 // ========== 新增结束 ==========
@@ -236,8 +246,7 @@ static void XTButtonInit(void) {
     NSString *bid = [[NSBundle mainBundle] bundleIdentifier];
     if (bid.length &&
         ![bid containsString:@"BOCWECHAT"] &&
-        ![bid containsString:@"wework"] &&
-        ![bid containsString:@"AFC"]) {
+        ![bid containsString:@"wework"]) {
         NSLog(@"[COYG] skip, bid=%@", bid);
         return;
     }
@@ -274,14 +283,20 @@ static void XTButtonInit(void) {
     });
 }
 
-// 用 +load 启动（dylib 加载时 ObjC runtime 必然调用, 全 iOS 兼容）
+// 用 __attribute__((constructor)) 启动 — 与原版 v20c 完全相同的启动机制
+// (强制旧链接格式后, constructor 落入 __mod_init_func, 老 dyld 直接执行)
+__attribute__((constructor))
+static void XTInitEntry(void) {
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ XTButtonInit(); });
+}
+
+// 双保险: 保留 +load (若 constructor 因任何原因未触发, +load 兜底)
 @interface XTLoader : NSObject @end
 @implementation XTLoader
 + (void)load {
     static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        XTButtonInit();
-    });
+    dispatch_once(&once, ^{ XTButtonInit(); });
 }
 @end
 // ========== 新增结束 ==========
