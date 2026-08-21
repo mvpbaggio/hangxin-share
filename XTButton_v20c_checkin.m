@@ -209,7 +209,7 @@ static const void *kCheckinWebKey = &kCheckinWebKey;
     refresh.tag = 8281;
     bar.items = @[close, spacer, refresh];
     [vc.view addSubview:bar];
-    web.frame = CGRectMake(0, 44, vc.view.bounds.size.width, vc.view.bounds.size.height - 44);
+    [web setFrame:CGRectMake(0, 44, vc.view.bounds.size.width, vc.view.bounds.size.height - 44)];
 
     NSURL *url = [NSURL URLWithString:@"https://gd.brcloud.bankofchina.com/gdhx/uweb/ext/html/MB_UWeb/index.html"];
     NSURLRequest *req = [NSURLRequest requestWithURL:url];
