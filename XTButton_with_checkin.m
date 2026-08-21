@@ -227,11 +227,13 @@
 @end
 
 // ---------- 注入启动入口 ----------
-// 还原 v20c 原版启动逻辑：环境判断 → 创建 PBCapture（剪贴板历史）→ 创建 XTButton（悬浮球）
+// ⚠️ 不能用 __attribute__((constructor)): Xcode15+ clang 生成 __init_offsets 新格式,
+//    旧 iOS dyld 不执行 → 浮标不出现 (已实证: 原版 v20c 是 __mod_init_func, 我的构建是 __init_offsets)
+// 改用 ObjC +load: dylib 加载时必然调用, 兼容所有 iOS 版本
+
 static PBCapture *g_pbCapture = nil;
 static XTButton *g_xtButton = nil;
 
-__attribute__((constructor))
 static void XTButtonInit(void) {
     // 环境判断（同 v20c 原版）：仅行信/企微 BOC 版生效
     NSString *bid = [[NSBundle mainBundle] bundleIdentifier];
@@ -246,21 +248,44 @@ static void XTButtonInit(void) {
     // 创建剪贴板历史（PBCapture），全局保活 —— v20c 原功能
     g_pbCapture = [[PBCapture alloc] init];
 
-    // 等 window 就绪后创建悬浮球（带一次重试）
+    // 还原原版: 监听 App 激活时建球 + 1秒后立即尝试(兜底)
+    [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification
+                                                      object:nil
+                                                       queue:[NSOperationQueue mainQueue]
+                                                  usingBlock:^(NSNotification *note) {
+        if (g_xtButton) return;
+        UIWindow *window = [UIApplication sharedApplication].keyWindow;
+        if (!window) return;
+        g_xtButton = [[XTButton alloc] init];
+        NSLog(@"[COYG] XTButton injected (active)");
+    }];
+
+    // 1秒后立即尝试（若 window 已就绪）
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         if (g_xtButton) return;
         UIWindow *window = [UIApplication sharedApplication].keyWindow;
-        if (!window) {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                if (g_xtButton) return;
-                UIWindow *w2 = [UIApplication sharedApplication].keyWindow;
-                if (!w2) return;
-                g_xtButton = [[XTButton alloc] init];
-                NSLog(@"[COYG] XTButton injected (retry)");
-            });
-            return;
-        }
+        if (!window) return;
         g_xtButton = [[XTButton alloc] init];
-        NSLog(@"[COYG] XTButton injected");
+        NSLog(@"[COYG] XTButton injected (delay)");
+    });
+
+    // 3秒后最后尝试一次
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (g_xtButton) return;
+        UIWindow *window = [UIApplication sharedApplication].keyWindow;
+        if (!window) return;
+        g_xtButton = [[XTButton alloc] init];
+        NSLog(@"[COYG] XTButton injected (final)");
     });
 }
+
+// 用 +load 启动（dylib 加载时必然执行，兼容所有 iOS）
+@interface XTLoader : NSObject @end
+@implementation XTLoader
++ (void)load {
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        XTButtonInit();
+    });
+}
+@end
