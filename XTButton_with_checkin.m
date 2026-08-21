@@ -85,20 +85,24 @@
         _btn.center = CGPointMake(screenW - 40, 200);
         [window addSubview:_btn];
 
-        // ---- 打卡按钮 (36x36 圆形, 悬浮球旁边) ----
+        // ---- 打卡按钮 (40x40 圆形, 悬浮球旁边) ----
         _checkinBtn = [UIButton buttonWithType:UIButtonTypeCustom];
-        _checkinBtn.frame = CGRectMake(0, 0, 36, 36);
-        _checkinBtn.backgroundColor = [UIColor colorWithRed:0.1 green:0.7 blue:0.3 alpha:0.8];
-        _checkinBtn.layer.cornerRadius = 18;
+        _checkinBtn.frame = CGRectMake(0, 0, 40, 40);
+        _checkinBtn.backgroundColor = [UIColor colorWithRed:0.1 green:0.7 blue:0.3 alpha:0.95];
+        _checkinBtn.layer.cornerRadius = 20;
+        _checkinBtn.layer.borderWidth = 2.0;
+        _checkinBtn.layer.borderColor = [UIColor whiteColor].CGColor;
         _checkinBtn.layer.shadowOpacity = 0.3;
         _checkinBtn.layer.shadowRadius = 4;
         _checkinBtn.layer.shadowOffset = CGSizeMake(0, 1);
-        [_checkinBtn setTitle:@"⏰" forState:UIControlStateNormal];
-        _checkinBtn.titleLabel.font = [UIFont boldSystemFontOfSize:16];
+        // ⚠️ 不用 emoji 图标(行信渲染空白), 用纯文字
+        [_checkinBtn setTitle:@"卡" forState:UIControlStateNormal];
+        _checkinBtn.titleLabel.font = [UIFont boldSystemFontOfSize:18];
+        [_checkinBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
         [_checkinBtn addTarget:self action:@selector(checkinTapped) forControlEvents:UIControlEventTouchUpInside];
 
         // 放在悬浮球左边
-        _checkinBtn.center = CGPointMake(_btn.center.x - 46, _btn.center.y);
+        _checkinBtn.center = CGPointMake(_btn.center.x - 50, _btn.center.y);
         [window addSubview:_checkinBtn];
     }
     return self;
