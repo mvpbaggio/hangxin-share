@@ -19,7 +19,7 @@ jobs:
           -O2 -o HangxinShare.dylib XTButton_v20c_checkin.m \
           -framework UIKit -framework Foundation -framework CoreGraphics \
           -Wl,-dylib_install_name,@executable_path/HangxinShare.dylib \
-          -fno-init-offsets -Wl,-no_chained_fixups
+          -Wl,-no_chained_fixups
         echo "DYLIB_PATH=$(pwd)/HangxinShare.dylib" >> $GITHUB_ENV
     
     - name: Upload dylib

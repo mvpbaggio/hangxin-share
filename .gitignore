@@ -2,3 +2,4 @@
 *.zip
 dylib_out/
 fix2_out/
+v8_out/
