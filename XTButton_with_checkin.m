@@ -157,67 +157,29 @@
 }
 
 // ---- 打卡按钮点击 ----
-// 行信(企业微信BOC版)打卡入口, 按可靠性优先级尝试:
-// 1. wxwork 深链(跳工作台, 打卡入口在工作台) / gotooldapp
-// 2. 原生打卡VC (WWKAttendanceCheckViewController, 行信自研)
-// 3. 官方打卡 web 页兜底
+// 打卡位置(超哥指定): 工作台 → 粤.统一门户 → 考勤与请休假
+// 「粤.统一门户」是工作台内的应用(appid 由服务端下发, 客户端无直达深链),
+// 故点击后跳转行信工作台 tab, 由用户点入打卡。
+// ⚠️ 不跳原生 WWKAttendanceCheckViewController / 企微官方考勤页: 都不是打卡位置
 - (void)checkinTapped {
     UIApplication *app = [UIApplication sharedApplication];
 
-    // 方式1: wxwork 深链到工作台(打卡一般在工作台/底部tab里)
-    NSArray *deepLinks = @[
-        @"wxworklocalnew://gotooldapp",  // 跳工作台/旧应用
-        @"wxwork://",                    // 通用深链
-    ];
-    for (NSString *urlStr in deepLinks) {
-        NSURL *u = [NSURL URLWithString:urlStr];
-        if ([app canOpenURL:u]) {
-            [app openURL:u options:@{} completionHandler:nil];
-            NSLog(@"[COYG] checkin deepLink: %@", urlStr);
-            return;
-        }
+    // 跳工作台 tab (行信唯一工作台深链入口)
+    NSURL *u = [NSURL URLWithString:@"wxworklocalnew://gotooldapp"];
+    if ([app canOpenURL:u]) {
+        [app openURL:u options:@{} completionHandler:nil];
+        NSLog(@"[COYG] checkin -> 工作台");
+    } else {
+        // 深链不可用时提示手动路径
+        UIAlertController *alert = [UIAlertController
+            alertControllerWithTitle:@"提示"
+            message:@"请在工作台 → 粤.统一门户 → 考勤与请休假 打卡"
+            preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:nil]];
+        [[UIApplication sharedApplication].keyWindow.rootViewController
+            presentViewController:alert animated:YES completion:nil];
+        NSLog(@"[COYG] checkin deepLink unavailable, alert");
     }
-
-    // 找当前 top VC
-    UIViewController *topVC = app.keyWindow.rootViewController;
-    while (topVC.presentedViewController) {
-        topVC = topVC.presentedViewController;
-    }
-    if ([topVC isKindOfClass:[UINavigationController class]]) {
-        topVC = [(UINavigationController *)topVC topViewController];
-    }
-
-    // 方式2: 原生打卡 VC (行信自研 WWKAttendanceCheckViewController)
-    // 正确入口: initWithCheckType:andFromType: (逆向自脱壳二进制, 参数 0,0=默认打卡)
-    // ⚠️ 之前用 [[alloc] init] 会闪退: 该类方法表里没有 init, 返回未初始化的 VC
-    Class checkinClass = NSClassFromString(@"WWKAttendanceCheckViewController");
-    if (checkinClass && topVC) {
-        id vc = nil;
-        SEL initSel = NSSelectorFromString(@"initWithCheckType:andFromType:");
-        if (initSel && [checkinClass instancesRespondToSelector:initSel]) {
-            IMP initImp = [checkinClass instanceMethodForSelector:initSel];
-            @try {
-                id raw = [checkinClass alloc];
-                vc = ((id (*)(id, SEL, int, long long))initImp)(raw, initSel, 0, 0);
-            } @catch (NSException *e) { vc = nil; }
-        }
-        if (vc) {
-            // 包一层导航再 present
-            UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
-            @try {
-                [topVC presentViewController:nav animated:YES completion:nil];
-                NSLog(@"[COYG] checkin presented WWKAttendanceCheckViewController");
-                return;
-            } @catch (NSException *e) {
-                NSLog(@"[COYG] checkin present fail: %@", e);
-            }
-        }
-    }
-
-    // 方式3: 官方打卡 web 页兜底(会在行信内置浏览器里打开)
-    NSURL *attURL = [NSURL URLWithString:@"https://open.work.weixin.qq.com/wwopen/attendance/"];
-    [app openURL:attURL options:@{} completionHandler:nil];
-    NSLog(@"[COYG] checkin web fallback");
 }
 @end
 
