@@ -6,6 +6,7 @@
 #import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
+#import <WebKit/WebKit.h>
 
 // ---------- PBCapture (剪贴板历史) ----------
 @interface PBCapture : NSObject
@@ -157,30 +158,49 @@
 }
 
 // ---- 打卡按钮点击 ----
-// 打卡位置(超哥指定): 工作台 → 粤.统一门户 → 考勤与请休假
-// 「粤.统一门户」是工作台内的应用(appid 由服务端下发, 客户端无直达深链),
-// 故点击后跳转行信工作台 tab, 由用户点入打卡。
-// ⚠️ 不跳原生 WWKAttendanceCheckViewController / 企微官方考勤页: 都不是打卡位置
+// 打卡位置(超哥指定): 粤.统一门户 → 考勤与请休假
+// 直接在行信内部浏览器打开, 利用行信进程内的 session/cookie 认证
 - (void)checkinTapped {
+    NSString *urlStr = @"https://gd.brcloud.bankofchina.com/gdhx/uweb/ext/html/MB_UWeb/index.html";
+    NSURL *url = [NSURL URLWithString:urlStr];
+    
+    // 用行信内部的 WebViewController 打开 (利用进程中已有的 session)
+    // 优先用 UIApplication openURL (行信会拦截 http/https 用自己的浏览器打开)
     UIApplication *app = [UIApplication sharedApplication];
-
-    // 跳工作台 tab (行信唯一工作台深链入口)
-    NSURL *u = [NSURL URLWithString:@"wxworklocalnew://gotooldapp"];
-    if ([app canOpenURL:u]) {
-        [app openURL:u options:@{} completionHandler:nil];
-        NSLog(@"[COYG] checkin -> 工作台");
+    if ([app canOpenURL:url]) {
+        [app openURL:url options:@{} completionHandler:nil];
+        NSLog(@"[COYG] checkin -> %@", urlStr);
     } else {
-        // 深链不可用时提示手动路径
-        UIAlertController *alert = [UIAlertController
-            alertControllerWithTitle:@"提示"
-            message:@"请在工作台 → 粤.统一门户 → 考勤与请休假 打卡"
-            preferredStyle:UIAlertControllerStyleAlert];
-        [alert addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:nil]];
-        [[UIApplication sharedApplication].keyWindow.rootViewController
-            presentViewController:alert animated:YES completion:nil];
-        NSLog(@"[COYG] checkin deepLink unavailable, alert");
+        // 兜底: 用 WKWebView 内嵌打开
+        UIViewController *top = [UIApplication sharedApplication].keyWindow.rootViewController;
+        while (top.presentedViewController) top = top.presentedViewController;
+        
+        WKWebView *webView = [[WKWebView alloc] initWithFrame:[UIScreen mainScreen].bounds];
+        webView.backgroundColor = [UIColor whiteColor];
+        [webView loadRequest:[NSURLRequest requestWithURL:url]];
+        
+        UIViewController *webVC = [[UIViewController alloc] init];
+        webVC.view = webView;
+        
+        // 加关闭按钮
+        UIButton *closeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        closeBtn.frame = CGRectMake(10, 40, 60, 30);
+        [closeBtn setTitle:@"关闭" forState:UIControlStateNormal];
+        closeBtn.backgroundColor = [UIColor whiteColor];
+        closeBtn.layer.cornerRadius = 5;
+        [closeBtn addTarget:self action:@selector(dismissWebView) forControlEvents:UIControlEventTouchUpInside];
+        [webView addSubview:closeBtn];
+        
+        [top presentViewController:webVC animated:YES completion:nil];
+        NSLog(@"[COYG] checkin -> WKWebView fallback");
     }
 }
+
+// 关闭内嵌 WKWebView
+- (void)dismissWebView {
+    UIViewController *top = [UIApplication sharedApplication].keyWindow.rootViewController;
+    while (top.presentedViewController) top = top.presentedViewController;
+    [top dismissViewControllerAnimated:YES completion:nil];
 @end
 
 // ---------- 注入启动入口 ----------
